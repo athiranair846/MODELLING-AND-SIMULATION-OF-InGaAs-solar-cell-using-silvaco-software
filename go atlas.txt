@@ -1,0 +1,92 @@
+go atlas
+#SECTION 1:Mesh Specification
+Mesh space.mult=1.0
+#
+x.mesh loc=0 spac=0.2
+x.mesh loc=10 spac=0.2
+#
+y.mesh loc=0 spac=0.02
+y.mesh loc=5 spac=0.5
+y.mesh loc=10 spac=0.02
+#SECTION 2:structure specification
+#
+Region num=1 material=InGaAs
+#
+elec num=1 name=anode x.min=4 x.max=6 y.min=0 y.max=0
+electrode bottom name=cathode
+struct outfile=solar_InGaAs.str
+######### TO FIND SHORT CIRCUIT CURRENT AND OPEN CIRCUIT VOLTAGE
+go atlas
+Mesh infile=solar_InGaAs.str
+#section 3:Material model specification
+doping uniform conc=1e14 n.type
+doping gaus peak=0.0 char=0.1 conc=5e18 p.type dir=y
+doping gaus peak=10.0 char=0.1 conc=5e18 n.type dir=y
+
+# Adjusted material properties for InGaAs
+material material=InGaAs taun0=1e-6 taup0=1e-6 sopra=ingaas.nk
+models bipolar fermi srh fldmob conmob auger optr print
+method gummel newton maxtrap=20
+output opt.int band.temp con.band val.band charge polar.charge band.param e.mobility h.mobility u.srh u.radiative u.auger permi
+solve init
+solve prev
+save outf=solar2_InGaAs.str
+tonyplot solar2_InGaAs.str
+solve init
+solve prev
+log outf=solar_InGaAs_3.log
+solve vanode=0.0 name=anode vstep=0.01 vfinal=0.55
+log off
+beam num=1 am1.5 x.orig=5 y.orig=-2 angle=90
+solve init
+solve prev
+solve b1=0.001
+solve b1=0.01
+solve b1=0.1
+solve b1=1
+log outf=solar_light_InGaAs.log
+solve vanode=0.0 name=anode vstep=0.01 vfinal=0.55
+tonyplot-overlay solar_InGaAs_3.log solar_light_InGaAs.log
+log off
+struct outfile=solar_InGaAs.str
+tonyplot solar_InGaAs.str
+
+# Extraction commands for Jsc, Voc, etc.
+extract init infile=” solar_light_InGaAs.log”
+extract name=”Jsc” y.val from curve(v.”anode”,i.”anode”)where x.val=0.0
+extract name=”JscmAcm2” $Jsc*1e08*1e03/10
+extract name=”voc” x.val from curve(v.”anode”,i.”anode”)where y.val=0.0
+extract name =”P”curve(v.”anode”,(v.”anode”*i.”anode”*(-1))) outf=”P_InGaAs.dat”
+extract name=”vm” x.val from curve(v.”anode”,(v.”anode”*i.”anode”))\
+  where y.val=$”Pm”
+extract name=”Im”&”Pm”/$”Vm”
+extract name=”FF”$”Pm”/($”Jsc”*$”Voc”)*100
+extract name=”Eff”(1e8*Pm/(0.1*10))*100
+tonyplot P_InGaAs.dat
+
+#####  second atlas run for spectral response
+go atlas
+mesh infile=solar_InGaAs.str
+material material=InGaAs taun0=1e-6 taup0=1e-6 sopra=ingaas.nk
+# set monochromatic light beam for spectral analysis
+Beam num=1 am1.5x.origin=5 y.origin=-2.0 angle=90.0
+#saves optical intensity to solution files
+Output opt.int band.temp con.band val.band charge polar.charge band.param e.mobility h.mobility u.srh u.radiative u.auger permi
+models bipolar fermi srh fldmob conmob auger optr print
+#spectral response
+Solve init
+Solve prev
+log outf=solar_InGaAs.log
+solve init
+solve prev
+solve b1=1 beam=1 lambda=0.3 wstep=0.01 wfinal=1.5
+tonyplot solar_InGaAs.log
+extract init inf=”solar_InGaAs.log”
+extract name=”IQE”curve(elect.”optical wavelength”,\
+-(i.”anode”)/elect.”available photo current”) outf=”IQE_InGaAs.dat”
+Extract name=”EQE”curve(elect.”optical wavelength”,\
+-(I,”anode”)/elect.”source photo current”) outf=”EQE_InGaAs.dat”
+Extract name=”EQE2”curve(elect.”optical wavelength”,\
+-(i.”anode”)/elect.”source photo current”*elect.”absorption”) outf=”EQE2_InGaAs.dat”
+Tonyplot-overlay EQE_InGaAs.dat EQE2_InGaAs.dat
+quit
