@@ -1,0 +1,2 @@
+# MODELLING-AND-SIMULATION-OF-InGaAs-solar-cell-using-silvaco-software
+This project involves modeling and simulating InGaAs solar cells using Silvaco software to analyze and optimize their performance. InGaAs, with its infrared light absorption and direct bandgap, enables  high-efficiency solar cells for space and advanced applications. Simulations help improve design, efficiency, and cost-effectiveness.
